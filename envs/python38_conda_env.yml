@@ -1,0 +1,81 @@
+name: r_py_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  # Python base
+  - python=3.8
+  - pip
+  - numpy
+  - pandas
+  - scanpy=1.9.3
+  - python-igraph
+  - leidenalg
+  - seaborn
+  - matplotlib
+  - scikit-learn
+  - scipy
+  - statsmodels
+  - scikit-posthocs
+  - umap-learn
+  - plotly
+  - joblib
+  - igraph
+  - leidenalg
+  - baycomp
+  - hdbscan
+  - configparser
+  - easydict
+  - rpy2
+  - pip:
+      - statannotations
+
+  # R base
+  - r-base=4.2.1 # "Funny-Looking Kid"
+  - r-essentials
+  - r-devtools
+  - r-tidyverse
+  - r-remotes
+  - r-dplyr
+  - r-tibble
+  - r-stringr
+  - r-magrittr
+  - r-data.table
+  - r-ggplot2
+  - r-ggpubr
+  - r-gridextra
+  - r-cowplot
+  - r-forcats
+  - r-tidyr
+  - r-pheatmap
+  - r-upsetr
+  - r-dendextend
+  - r-openxlsx # Replaces r-xlsx as this needs Java installed
+  - r-hash
+  - r-ggnewscale
+  - r-ggalluvial
+  - r-alluvial
+  - r-qdaptools
+  - r-lsr
+  - r-testit
+  - r-bayesfactor
+ # - r-pathfindr
+  
+  # Bioconductor packages
+  - bioconductor-edger
+  - bioconductor-limma
+  - bioconductor-deseq2
+  - bioconductor-clusterprofiler
+  - bioconductor-enrichplot
+  - bioconductor-dose
+  - bioconductor-reactomepa
+  - bioconductor-fgsea
+  - bioconductor-org.hs.eg.db
+  - bioconductor-variancepartition
+  - bioconductor-pathview
+  - bioconductor-complexheatmap
+
+
+  
