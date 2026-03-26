@@ -3,7 +3,7 @@
 Natalie Garzorz-Stark†, Christina Hillig†, Heydar Maboudi Afkham†, Martin Meinel, 
 Manja Jargosch, Peter Seiringer, Felix Lauffer, Anna C Pilz, Xixi Li, Jigyansa Mishra, 
 Matthias Hübenthal, Stephan Weidinger, Benjamin Klein, Lam C Tsoi, Johann Gudjonsson, 
-Curdin Conrad12, Michel Gilliet, Fabian Theis, Carsten B. Schmidt-Weber, Tilo Biedermann, 
+Curdin Conrad, Michel Gilliet, Fabian Theis, Carsten B. Schmidt-Weber, Tilo Biedermann, 
 Michael P. Menden*, †, Stefanie Eyerich†, Kilian Eyerich*
 
 
