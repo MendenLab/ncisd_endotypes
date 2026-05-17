@@ -8,20 +8,24 @@ from datetime import date
 
 def sanity_check(df_metadata, result):
     # Sanity check
-    age_mean = df_metadata.loc[df_metadata['Disease'] == 'eczema', 'Age'].mean()
-    age_std = df_metadata.loc[df_metadata['Disease'] == 'eczema', 'Age'].std()
+    mask_eczema = (df_metadata['Disease'] == 'eczema') & (df_metadata['Subtype'] == 'nummular eczema')
+    age_mean = df_metadata.loc[mask_eczema, 'Age'].mean()
+    age_std = df_metadata.loc[mask_eczema, 'Age'].std()
     age_mean_std = "{:.1f} ± {:.1f}".format(age_mean, age_std)
-    sex_percent = ((df_metadata.loc[df_metadata['Disease'] == 'eczema', 'Sex'].str.lower() == 'm').astype(
+    sex_percent = ((df_metadata.loc[mask_eczema, 'Sex'].str.lower() == 'm').astype(
         int).mean() * 100).round(1)
-    assert np.all(result.loc[result['Disease'] == 'eczema', 'Age (mean ± SD)'] == age_mean_std) & np.all(
-        result.loc[result['Disease'] == 'eczema', 'Sex (% of male)'] == sex_percent), 'Eczema: Not the same'
-    age_mean = df_metadata.loc[df_metadata['Disease'] == 'psoriasis', 'Age'].mean()
-    age_std = df_metadata.loc[df_metadata['Disease'] == 'psoriasis', 'Age'].std()
+    # TODO adjust for subtype info
+    assert np.all(result.loc[(result['Disease'] == 'eczema') & (result['Subtype'] == 'nummular eczema'), 'Age (mean ± SD)'] == age_mean_std) & np.all(
+        result.loc[(result['Disease'] == 'eczema') & (result['Subtype'] == 'nummular eczema'), 'Sex (% of male)'] == sex_percent), 'Eczema: Not the same'
+
+    mask_pso = (df_metadata['Disease'] == 'psoriasis') & (df_metadata['Subtype'] == 'plaque psoriasis')
+    age_mean = df_metadata.loc[mask_pso, 'Age'].mean()
+    age_std = df_metadata.loc[mask_pso, 'Age'].std()
     age_mean_std = "{:.1f} ± {:.1f}".format(age_mean, age_std)
-    sex_percent = ((df_metadata.loc[df_metadata['Disease'] == 'psoriasis', 'Sex'].str.lower() == 'm').astype(
+    sex_percent = ((df_metadata.loc[mask_pso, 'Sex'].str.lower() == 'm').astype(
         int).mean() * 100).round(1)
-    assert np.all(result.loc[result['Disease'] == 'psoriasis', 'Age (mean ± SD)'] == age_mean_std) & np.all(
-        result.loc[result['Disease'] == 'psoriasis', 'Sex (% of male)'] == sex_percent), \
+    assert np.all(result.loc[(result['Disease'] == 'psoriasis') & (result['Subtype'] == 'plaque psoriasis'), 'Age (mean ± SD)'] == age_mean_std) & np.all(
+        result.loc[(result['Disease'] == 'psoriasis') & (result['Subtype'] == 'plaque psoriasis'), 'Sex (% of male)'] == sex_percent), \
         'Psoriasis: Not the same'
 
 
@@ -33,8 +37,8 @@ def get_infos(df_metadata):
     df_metadata['Age'] = df_metadata['Age'].astype(int)
 
     # Regroup by Pattern and diag
-    # Gruppieren nach Pattern und diag
-    df_grouped = df_metadata.groupby(['Pattern', 'Disease']).agg(
+    # Gruppieren nach Pattern und diag # TODO adjust to add subtype info
+    df_grouped = df_metadata.groupby(['Pattern', 'Disease', 'Subtype']).agg(
         Patients_n=('Patient', lambda x: x.nunique()),
         Age_mean=('Age', 'mean'),
         Age_std=('Age', 'std'),
@@ -50,7 +54,7 @@ def get_infos(df_metadata):
     df_grouped['Sex (% of male)'] = df_grouped['Male_percentage'].round(1)
 
     # Endauswahl der Spalten
-    result = df_grouped[['Pattern', 'Disease', 'Patients_n', 'Age (mean ± SD)', 'Sex (% of male)']]
+    result = df_grouped[['Pattern', 'Disease', 'Subtype', 'Patients_n', 'Age (mean ± SD)', 'Sex (% of male)']]
 
     # Optional: Spalte umbenennen
     result = result.rename(columns={'Patients_n': 'Patients (n)'})
@@ -63,9 +67,10 @@ def get_infos(df_metadata):
 
 def get_metadata(df):
     # Get Pattern, diag, Patients (n), Age (mean ± SD), Sex (% of male)
-    df_metadata = df[['healthysamp_Pattern_v2', 'healthysamp_diag_v2', 'Patient ID', 'age', 'Sex_x']]
+    df_metadata = df[['healthysamp_Pattern_v2', 'healthysamp_diag_v2', 'sdiag', 'Patient ID', 'age', 'Sex_x']]
     # rename diag to Disease, Pseudo ID to Patient, age to Age, and Sex_x to Sex
     df_metadata.rename(columns={'healthysamp_Pattern_v2': 'Pattern', 'healthysamp_diag_v2': 'Disease',
+                                'sdiag': 'Subtype',
                                 'Patient ID': 'Patient', 'age': 'Age', 'Sex_x': 'Sex'}, inplace=True)
 
     return df_metadata
@@ -104,26 +109,26 @@ def rename_nonlesion_samples_to_paired_lesion_name(
 
 
 def main():
-    # Load L bulk samples
-    adata = sc.read(os.path.join(
-        '/Volumes', 'CH__data', 'Projects', 'Eyerich_AG_projects', 'BRAIN__Natalie_Garzorz-Stark_Peter_Seiringer',
-        'analysis', 'Molecular_subtypes', 'input', 'h5_files', 'LESION',
-        'Lesion_RNAseq_20210720_patient_meta_data_v04__CH_20220209_TherapyResponse_v04_v220715_TherapyResponseCorrected__Endotypes_230620.h5'))
-
-    # PatientID sometimes contains HG16.711_H and HG16.711_Lym -> remove rubstring to make same patient
-    adata.obs['Patient ID'] = adata.obs['Pseudo ID'].str.split('_').str[0]
-
-    df_metadata = get_metadata(df=adata.obs)
-    print(df_metadata.columns.to_list())
-    LS_result = get_infos(df_metadata=df_metadata)
-    # Ausgabe
-    print(LS_result)
-    print('Only L samples: ', LS_result['Patients (n)'].sum())
-
-    sanity_check(df_metadata=df_metadata, result=LS_result)
-
-    # Save result but these are only L samples .. Not enough
-    LS_result.to_excel(os.path.join(output_dir, 'Table_S1.xlsx'), index=False, sheet_name='Table_S1_LS_samples')
+    # # Load L bulk samples
+    # adata = sc.read(os.path.join(
+    #     '/Volumes', 'CH__data', 'Projects', 'Eyerich_AG_projects', 'BRAIN__Natalie_Garzorz-Stark_Peter_Seiringer',
+    #     'analysis', 'Molecular_subtypes', 'input', 'h5_files', 'LESION',
+    #     'Lesion_RNAseq_20210720_patient_meta_data_v04__CH_20220209_TherapyResponse_v04_v220715_TherapyResponseCorrected__Endotypes_230620.h5'))
+    #
+    # # PatientID sometimes contains HG16.711_H and HG16.711_Lym -> remove rubstring to make same patient
+    # adata.obs['Patient ID'] = adata.obs['Pseudo ID'].str.split('_').str[0]
+    #
+    # df_metadata = get_metadata(df=adata.obs)
+    # print(df_metadata.columns.to_list())
+    # LS_result = get_infos(df_metadata=df_metadata)
+    # # Ausgabe
+    # print(LS_result)
+    # print('Only L samples: ', LS_result['Patients (n)'].sum())
+    #
+    # sanity_check(df_metadata=df_metadata, result=LS_result)
+    #
+    # # Save result but these are only L samples .. Not enough
+    # LS_result.to_excel(os.path.join(output_dir, 'Table_S1.xlsx'), index=False, sheet_name='Table_S1_LS_samples')
 
     # L and NL: 632 samples nach preprocessing
     adata = sc.read(os.path.join(
@@ -138,6 +143,11 @@ def main():
     adata.obs = adata.obs.replace({'diag': r'non lesional'}, {'diag': 'non-lesional'}, regex=True)
     adata.obs = rename_nonlesion_samples_to_paired_lesion_name(
         obs=adata.obs, ref_obsname='diag', obsname='healthysamp_diag_v2', group_name='diag')
+    # rename non lesional to non-lesional
+    adata.obs['sdiag'] = adata.obs['sdiag'].astype(str)
+    mask_nl = adata.obs['diag'] == 'non-lesional'
+    adata.obs.loc[mask_nl, 'sdiag'] = 'non-lesional'
+    adata.obs = adata.obs.replace({'sdiag': r'nan'}, {'sdiag': 'N/A'}, regex=True)
     # rename non lesional to non-lesional
     adata.obs['Pattern'] = adata.obs['Pattern'].astype(str)
     adata.obs = adata.obs.replace({'Pattern': r'NL'}, {'Pattern': 'non-lesional'}, regex=True)
@@ -178,8 +188,8 @@ def main():
     df_overview['SampleID'] = df_overview['SampleID'].str.replace('Sample_', '')
     sampleIDs = df_overview.loc[~df_overview['SampleID'].isna(), 'SampleID'].to_list()
     df_reindexed = adata.obs.reindex(sampleIDs)
-    df_reindexed[['Patient ID', 'diag', 'Pattern', 'sampleType', 'batchID', 'age', 'Sex_x']].to_excel(
-        '/Volumes/CH__data/Projects/data/Summary/MetaData_Overview.xlsx')
+    df_reindexed[['Patient ID', 'diag', 'sdiag', 'Pattern', 'sampleType', 'batchID', 'age', 'Sex_x']].to_excel(
+        '/Volumes/CH__data/Projects/data/Summary/MetaData_Overview_with_Subtypes.xlsx')
 
 
 if __name__ == '__main__':
