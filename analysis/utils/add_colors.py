@@ -108,7 +108,7 @@ def sdiag_order_lesion(adata):
         'nummular eczema', 'rosacea', 'seborrheic eczema', 'eczema',
         'plaque psoriasis and psoriasis arthritis', 'plaque psoriasis and psoriasis inversa', 'plaque psoriasis',
         'psoriasis guttata', 'psoriasis inversa', 'psoriasis palmoplantaris', 'psoriasis pustulosa',
-        'psoriasis pustulosa palmoplantaris', 'generalized pustular psoriasis']
+        'psoriasis pustulosa palmoplantaris', 'generalized pustular psoriasis', 'nan']
 
     adata.obs['sdiag'] = adata.obs['sdiag'].astype('category')
     adata.obs['sdiag'] = adata.obs['sdiag'].cat.reorder_categories(sdiag_order)
@@ -116,7 +116,7 @@ def sdiag_order_lesion(adata):
         'sandybrown', 'peru', 'bisque', 'peachpuff',
         'lightcoral', 'indianred', 'orangered', 'brown', 'salmon', 'tomato', 'red', 'maroon',
         'cornflowerblue', 'royalblue', 'midnightblue', 'deepskyblue', 'blue', 'dodgerblue', 'steelblue',
-        'darkviolet', 'mediumorchid']
+        'darkviolet', 'mediumorchid', 'grey']
 
     return adata, sdiag_order
 
