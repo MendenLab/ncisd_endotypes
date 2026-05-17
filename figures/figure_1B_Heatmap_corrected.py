@@ -1,5 +1,5 @@
-from scripts.feature_engineering import encoding, imputation
-from scripts.utils import add_colors
+from analysis.Figure_1.feature_engineering import encoding, imputation
+from analysis.utils import add_colors
 from sklearn import preprocessing
 
 import matplotlib.pyplot as plt
@@ -454,7 +454,6 @@ def main(save_folder):
     # set(df_corrected_metadata.columns) - set(adata.obs.columns)
     common_cols = np.intersect1d(adata.obs.columns, df_corrected_metadata.columns)
     assert np.all(df_corrected_metadata.loc[adata.obs.index, common_cols].index == adata.obs.index)
-    # TODO might have to adjust some variables -> Peter
     adata.obs.loc[:, common_cols] = df_corrected_metadata.loc[adata.obs.index, common_cols]
 
     adata, sorter = add_colors.diag_order_lesion(adata=adata)
