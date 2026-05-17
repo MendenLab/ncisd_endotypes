@@ -1,7 +1,7 @@
 """Plot diseases in UMAP
 
 """
-from scripts.utils import add_colors
+from analysis.utils import add_colors
 
 import matplotlib.pyplot as plt
 import seaborn as sns

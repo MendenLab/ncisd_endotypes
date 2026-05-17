@@ -2,7 +2,7 @@
 
 """
 
-from scripts.utils import add_colors
+from analysis.utils import add_colors
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scanpy as sc

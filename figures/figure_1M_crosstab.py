@@ -1,6 +1,3 @@
-from scripts.utils import add_colors
-from scripts.GEx_classifier.utils import utils
-
 import matplotlib.pyplot as plt
 import matplotlib
 import scanpy as sc
