@@ -104,7 +104,7 @@ def sdiag_order_lesion(adata):
     sdiag_order = [
         'chilblain lupus', 'chronic discoid lupus erythematosus', 'subacute cutaneous lupus erythematosus',
         'lupus erythematosus',
-        'erythrodermia', 'asteatotic eczema', 'atopic dermatitis', 'hyperkeratotic-rhagadiform eczema of the hands',
+        'erythrodermia', 'asteatotic eczema', 'atopic dermatitis', 'hyperkeratotic rhagadiform eczema of the hands',
         'nummular eczema', 'rosacea', 'seborrheic eczema', 'eczema',
         'plaque psoriasis and psoriasis arthritis', 'plaque psoriasis and psoriasis inversa', 'plaque psoriasis',
         'psoriasis guttata', 'psoriasis inversa', 'psoriasis palmoplantaris', 'psoriasis pustulosa',
