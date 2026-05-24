@@ -30,6 +30,96 @@ def export_legend(legend, save_folder, ncol, filename="legend", expand=[-5, -5, 
     plt.close(fig=fig)
 
 
+def sdiag_order_lesion(adata):
+    # 'eczemaundefined', 'nummular eczemaundefined', 'lupus erythematosusundefined',
+    # 'psoriasis pustulosa palmoplantarisundefined', 'psoriasis pustulosaundefined'
+    # sdiag_order = [
+    #     'chilblain lupus', 'chronic discoid lupus erythematosus', 'subacute cutaneous lupus erythematosus',
+    #     'lupus erythematosus',
+    #     'erythrodermia', 'asteatotic eczema', 'atopic dermatitis', 'hyperkeratotic rhagadiform eczema of the hands',
+    #     'nummular eczema', 'rosacea', 'seborrheic eczema', 'eczema',
+    #     'plaque psoriasis',
+    #     'psoriasis guttata', 'psoriasis inversa', 'psoriasis palmoplantaris', 'psoriasis pustulosa',
+    #     'psoriasis pustulosa palmoplantaris', 'N/A']
+    #
+    # adata.obs['sdiag'] = adata.obs['sdiag'].astype('category')
+    # adata.obs['sdiag'] = adata.obs['sdiag'].cat.reorder_categories(sdiag_order)
+    # adata.uns['sdiag_colors'] = [
+    #     'sandybrown', 'peru', 'bisque', 'peachpuff',
+    #     'lightcoral', 'indianred', 'orangered', 'brown', 'salmon', 'tomato', 'red', 'maroon',
+    #     'midnightblue',
+    #     'deepskyblue', 'blue', 'dodgerblue', 'steelblue',
+    #     'darkviolet', 'grey']
+
+    lupus_colors = [
+        "#e76f51",  # strong orange-red (darkest)
+        "#f4a261",  # soft orange
+        "#ffd166",  # yellow-orange
+        "#fff3b0"  # light yellow (lightest)
+    ]
+
+    eczema_colors = [
+        "#660000",  # darkest
+        "#7f0000",
+        "#99000d",
+        "#a50f15",
+        "#cb181d",
+        "#e41a1c",
+        "#f08080",
+        "#fbb4ae"  # lightest
+    ]
+
+    psoriasis_colors = [
+        "#08306b",  # darkest navy
+        "#08519c",
+        "#3182bd",
+        "#6baed6",
+        "#9ecae1",
+        "#deebf7"  # lightest
+    ]
+
+    na_color = ["#bdbdbd"]
+
+    sdiag_order = [
+        'chilblain lupus',
+        'chronic discoid lupus erythematosus',
+        'subacute cutaneous lupus erythematosus',
+        'lupus erythematosus',
+
+        'erythrodermia',
+        'asteatotic eczema',
+        'atopic dermatitis',
+        'hyperkeratotic rhagadiform eczema of the hands',
+        'nummular eczema',
+        'rosacea',
+        'seborrheic eczema',
+        'eczema',
+
+        'plaque psoriasis',
+        'psoriasis guttata',
+        'psoriasis inversa',
+        'psoriasis palmoplantaris',
+        'psoriasis pustulosa',
+        'psoriasis pustulosa palmoplantaris',
+
+        'N/A'
+    ]
+
+    adata.obs['sdiag'] = adata.obs['sdiag'].astype('category')
+    # print(set(adata.obs["sdiag"].cat.categories) - set(sdiag_order))
+    # print(set(sdiag_order) - set(adata.obs["sdiag"].cat.categories))
+    adata.obs['sdiag'] = adata.obs['sdiag'].cat.reorder_categories(sdiag_order)
+
+    adata.uns['sdiag_colors'] = (
+            lupus_colors +
+            eczema_colors +
+            psoriasis_colors +
+            na_color
+    )
+
+    return adata, sdiag_order
+
+
 def main(save_folder):
     adata = sc.read(os.path.join(
         '/Volumes', 'CH__data', 'Projects', 'Eyerich_AG_projects', 'BRAIN__Natalie_Garzorz-Stark_Peter_Seiringer',
@@ -46,45 +136,40 @@ def main(save_folder):
         'cutaneous side effects of biologics'
     ]
 
-    adata.obs['sdiag'] = adata.obs['sdiag'].astype('object')
-    adata.obs['sdiag'] = adata.obs['sdiag'].replace('nan', np.nan).fillna('N/A')
-    adata.obs['sdiag'] = adata.obs['sdiag'].astype('category')
+    # Put into one group (only plaques were biopsied):
+    # Rename to "plaque psoriasis and psoriasis arthritis" and "plaques psoriasis and psoriasis inversa" to "plaque psoriasis"
+    adata.obs['sdiag'] = adata.obs['sdiag'].replace({
+        "plaque psoriasis and psoriasis arthritis": "plaque psoriasis",
+        "plaque psoriasis and psoriasis inversa": "plaque psoriasis",
+        # Generalized pustular psoriasis and psoriasis pustulosa are the same
+        "generalized pustular psoriasis": "psoriasis pustulosa",
+        # Replace nan with N/A
+        "nan": "N/A"
+    })
+    adata.obs['sdiag'] = adata.obs['sdiag'].cat.remove_unused_categories()
 
-    # old categories + colors
-    cats = list(adata.obs['sdiag'].cat.categories)
-    colors = list(adata.uns['sdiag_colors'])
-
-    # try to find where NaN used to be (often last or missing)
-    # if NaN existed as a category before replacement, it is usually dropped now,
-    # so we assume it was the last color or explicitly stored
-    na_color = colors[-1]  # safest fallback assumption
-    # rebuild categories ensuring N/A is included
-    new_cats = cats
-    # ensure N/A is present
-    if 'N/A' not in new_cats:
-        new_cats.append('N/A')
-    # assign color mapping
-    color_map = dict(zip(new_cats, [na_color] + colors[:len(new_cats) - 1]))
-    adata.uns['sdiag_colors'] = [
-        color_map[c] for c in adata.obs['sdiag'].cat.categories
-    ]
+    adata, _ = sdiag_order_lesion(adata=adata)
 
     # mask for highlighted cells
     mask = adata.obs['diag'].isin(highlight_diag)
 
+    # old categories + colors
+    sdiag_palette = dict(zip(
+        adata.obs["sdiag"].cat.categories,
+        adata.uns["sdiag_colors"]
+    ))
+
     # UMAP coordinates
     umap = adata.obsm['X_umap']
 
-    # Scanpy categorical color mapping
-    sdiag_palette = dict(
-        zip(
-            adata.obs['sdiag'].cat.categories,
-            adata.uns['sdiag_colors']
-        )
-    )
-
     fig, ax = plt.subplots(figsize=(9, 6))
-    # --- background layer ---
+
+    ax.set_xlabel('UMAP1', fontsize=12)
+    ax.set_ylabel('UMAP2', fontsize=12)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    sns.despine(ax=ax)
+    # background
     ax.scatter(
         umap[:, 0],
         umap[:, 1],
@@ -93,42 +178,30 @@ def main(save_folder):
         alpha=1,
         linewidths=0
     )
-    # --- overlay highlighted groups ---
-    for sdiag in adata.obs.loc[mask, 'sdiag'].unique():
+
+    # overlay highlighted groups
+    for sdiag in adata.obs.loc[mask, 'sdiag'].cat.categories:
         submask = mask & (adata.obs['sdiag'] == sdiag)
+
+        if submask.sum() == 0:
+            continue
 
         ax.scatter(
             umap[submask, 0],
             umap[submask, 1],
-            s=40,
+            s=100,
             color=sdiag_palette[sdiag],
             label=sdiag,
-            linewidths=0
+            linewidths=0.5,
+            edgecolor='k',
+            marker='*'
         )
-    ax.set_xlabel('UMAP1', fontsize=12)
-    ax.set_ylabel('UMAP2', fontsize=12)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    sns.despine(ax=ax)
 
-    grey_point = Line2D(
-        [0], [0],
-        marker='o',
-        color='w',
-        label='Other diagnosis',
-        markerfacecolor='gainsboro',
-        markersize=8
-    )
+    grey_point = Line2D([0], [0], marker='o', color='w', label='Other diagnosis', markerfacecolor='gainsboro',
+                        markersize=8)
     handles, labels = ax.get_legend_handles_labels()
-
-    ax.legend(
-        handles=[grey_point] + handles,
-        labels=['Other diagnosis'] + labels,
-        bbox_to_anchor=(1.05, 1),
-        loc='upper left',
-        frameon=False,
-        title='Subtype/clinical phenotype'
-    )
+    ax.legend(handles=[grey_point] + handles, labels=['Other diagnosis'] + labels, bbox_to_anchor=(1.05, 1),
+              loc='upper left', frameon=False, title='Subtype/clinical phenotype')
     plt.tight_layout()
     plt.savefig(os.path.join(save_folder, "Figure_S1E_UMAP_sdiag.pdf"))
     plt.close(fig=fig)
