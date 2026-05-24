@@ -29,6 +29,96 @@ def export_legend(legend, save_folder, ncol, filename="legend", expand=[-5, -5, 
     plt.close(fig=fig)
 
 
+def sdiag_order_lesion(adata):
+    # 'eczemaundefined', 'nummular eczemaundefined', 'lupus erythematosusundefined',
+    # 'psoriasis pustulosa palmoplantarisundefined', 'psoriasis pustulosaundefined'
+    # sdiag_order = [
+    #     'chilblain lupus', 'chronic discoid lupus erythematosus', 'subacute cutaneous lupus erythematosus',
+    #     'lupus erythematosus',
+    #     'erythrodermia', 'asteatotic eczema', 'atopic dermatitis', 'hyperkeratotic rhagadiform eczema of the hands',
+    #     'nummular eczema', 'rosacea', 'seborrheic eczema', 'eczema',
+    #     'plaque psoriasis',
+    #     'psoriasis guttata', 'psoriasis inversa', 'psoriasis palmoplantaris', 'psoriasis pustulosa',
+    #     'psoriasis pustulosa palmoplantaris', 'N/A']
+    #
+    # adata.obs['sdiag'] = adata.obs['sdiag'].astype('category')
+    # adata.obs['sdiag'] = adata.obs['sdiag'].cat.reorder_categories(sdiag_order)
+    # adata.uns['sdiag_colors'] = [
+    #     'sandybrown', 'peru', 'bisque', 'peachpuff',
+    #     'lightcoral', 'indianred', 'orangered', 'brown', 'salmon', 'tomato', 'red', 'maroon',
+    #     'midnightblue',
+    #     'deepskyblue', 'blue', 'dodgerblue', 'steelblue',
+    #     'darkviolet', 'grey']
+
+    lupus_colors = [
+        "#e76f51",  # strong orange-red (darkest)
+        "#f4a261",  # soft orange
+        "#ffd166",  # yellow-orange
+        "#fff3b0"  # light yellow (lightest)
+    ]
+
+    eczema_colors = [
+        "#660000",  # darkest
+        "#7f0000",
+        "#99000d",
+        "#a50f15",
+        "#cb181d",
+        "#e41a1c",
+        "#f08080",
+        "#fbb4ae"  # lightest
+    ]
+
+    psoriasis_colors = [
+        "#08306b",  # darkest navy
+        "#08519c",
+        "#3182bd",
+        "#6baed6",
+        "#9ecae1",
+        "#deebf7"  # lightest
+    ]
+
+    na_color = ["#bdbdbd"]
+
+    sdiag_order = [
+        'chilblain lupus',
+        'chronic discoid lupus erythematosus',
+        'subacute cutaneous lupus erythematosus',
+        'lupus erythematosus',
+
+        'erythrodermia',
+        'asteatotic eczema',
+        'atopic dermatitis',
+        'hyperkeratotic rhagadiform eczema of the hands',
+        'nummular eczema',
+        'rosacea',
+        'seborrheic eczema',
+        'eczema',
+
+        'plaque psoriasis',
+        'psoriasis guttata',
+        'psoriasis inversa',
+        'psoriasis palmoplantaris',
+        'psoriasis pustulosa',
+        'psoriasis pustulosa palmoplantaris',
+
+        'N/A'
+    ]
+
+    adata.obs['sdiag'] = adata.obs['sdiag'].astype('category')
+    # print(set(adata.obs["sdiag"].cat.categories) - set(sdiag_order))
+    # print(set(sdiag_order) - set(adata.obs["sdiag"].cat.categories))
+    adata.obs['sdiag'] = adata.obs['sdiag'].cat.reorder_categories(sdiag_order)
+
+    adata.uns['sdiag_colors'] = (
+            lupus_colors +
+            eczema_colors +
+            psoriasis_colors +
+            na_color
+    )
+
+    return adata, sdiag_order
+
+
 def main(save_folder):
     adata = sc.read(os.path.join(
         '/Volumes', 'CH__data', 'Projects', 'Eyerich_AG_projects', 'BRAIN__Natalie_Garzorz-Stark_Peter_Seiringer',
@@ -39,8 +129,20 @@ def main(save_folder):
     obs = 'sdiag'
     ncol = 2
 
-    adata, _ = add_colors.sdiag_order_lesion(adata=adata)
+    # Put into one group (only plaques were biopsied):
+    # Rename to "plaque psoriasis and psoriasis arthritis" and "plaques psoriasis and psoriasis inversa" to "plaque psoriasis"
+    adata.obs[obs] = adata.obs[obs].replace({
+        "plaque psoriasis and psoriasis arthritis": "plaque psoriasis",
+        "plaque psoriasis and psoriasis inversa": "plaque psoriasis",
+        # Generalized pustular psoriasis and psoriasis pustulosa are the same
+        "generalized pustular psoriasis": "psoriasis pustulosa",
+        # Replace nan with N/A
+        "nan": "N/A"
+    })
+    adata.obs[obs] = adata.obs[obs].cat.remove_unused_categories()
 
+    # Read out colors for subtypes
+    adata, _ = sdiag_order_lesion(adata=adata)
     mapp_diag_color = dict(zip(list(adata.obs[obs].cat.categories), adata.uns['{}_colors'.format(obs)]))
     colors = [mapp_diag_color[val] for val in adata.obs[obs]]
 
@@ -69,6 +171,47 @@ def main(save_folder):
     labels = list(colordict.keys())
     legend = plt.legend(handles, labels, loc=3, framealpha=1, frameon=False, ncol=ncol)
     export_legend(legend, save_folder=save_folder, ncol=ncol)
+
+    ct = pd.crosstab(adata.obs["sdiag"], adata.obs["Pattern"])
+    row_colors = pd.Series(
+        adata.uns["sdiag_colors"],
+        index=adata.obs["sdiag"].cat.categories
+    ).loc[ct.index]
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    # draw colored background
+    ax.imshow(np.zeros_like(ct), cmap="Greys", aspect="auto")
+    # apply row colors manually
+    for i, row in enumerate(ct.index):
+        ax.add_patch(plt.Rectangle(
+            (-0.5, i - 0.5),
+            ct.shape[1],
+            1,
+            color=row_colors[row],
+            alpha=0.35
+        ))
+    # add numbers
+    for i in range(ct.shape[0]):
+        for j in range(ct.shape[1]):
+            ax.text(
+                j, i,
+                str(ct.iloc[i, j]),
+                ha="center",
+                va="center",
+                fontsize=12
+            )
+    # ticks
+    ax.set_xticks(range(ct.shape[1]))
+    ax.set_xticklabels(ct.columns, rotation=0, fontsize=12)
+
+    ax.set_yticks(range(ct.shape[0]))
+    ax.set_yticklabels(ct.index, fontsize=12)
+
+    ax.set_title("Subtypes vs. Pattern")
+    plt.tight_layout()
+    plt.show()
+    plt.savefig(os.path.join(save_folder, "Figure_S1D_Table_{}_vs_Pattern.pdf".format(obs)))
+    plt.close(fig=fig)
 
 
 if __name__ == '__main__':
