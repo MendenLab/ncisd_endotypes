@@ -109,16 +109,16 @@ def rename_nonlesion_samples_to_paired_lesion_name(
 
 
 def main():
-    # # Load L bulk samples
-    # adata = sc.read(os.path.join(
-    #     '/Volumes', 'CH__data', 'Projects', 'Eyerich_AG_projects', 'BRAIN__Natalie_Garzorz-Stark_Peter_Seiringer',
-    #     'analysis', 'Molecular_subtypes', 'input', 'h5_files', 'LESION',
-    #     'Lesion_RNAseq_20210720_patient_meta_data_v04__CH_20220209_TherapyResponse_v04_v220715_TherapyResponseCorrected__Endotypes_230620.h5'))
-    #
-    # # PatientID sometimes contains HG16.711_H and HG16.711_Lym -> remove rubstring to make same patient
-    # adata.obs['Patient ID'] = adata.obs['Pseudo ID'].str.split('_').str[0]
-    #
-    # df_metadata = get_metadata(df=adata.obs)
+    # Load L bulk samples
+    adata_L = sc.read(os.path.join(
+        '/Volumes', 'CH__data', 'Projects', 'Eyerich_AG_projects', 'BRAIN__Natalie_Garzorz-Stark_Peter_Seiringer',
+        'analysis', 'Molecular_subtypes', 'input', 'h5_files', 'LESION',
+        'Lesion_RNAseq_20210720_patient_meta_data_v04__CH_20220209_TherapyResponse_v04_v220715_TherapyResponseCorrected__Endotypes_230620.h5'))
+
+    # PatientID sometimes contains HG16.711_H and HG16.711_Lym -> remove rubstring to make same patient
+    adata_L.obs['Patient ID'] = adata_L.obs['Pseudo ID'].str.split('_').str[0]
+
+    # df_metadata = get_metadata(df=adata_L.obs)
     # print(df_metadata.columns.to_list())
     # LS_result = get_infos(df_metadata=df_metadata)
     # # Ausgabe
@@ -138,6 +138,18 @@ def main():
     # PatientID sometimes contains HG16.711_H and HG16.711_Lym -> remove rubstring to make same patient
     adata.obs['Patient ID'] = adata.obs['Pseudo ID'].str.split('_').str[0]
 
+    # Check whether metadata in adata_L and adata is the same
+    df_test = adata.obs.loc[(adata.obs['sampleType'] == 'd') & (adata.obs['Patient ID'].isin(adata_L.obs['Patient ID'])), 'sdiag']
+    assert df_test.loc[adata_L.obs.index].equals(adata_L.obs['sdiag']), "Not identical"
+
+    # Put into one group (only plaques were biopsied):
+    # Rename to "plaque psoriasis and psoriasis arthritis" and "plaques psoriasis and psoriasis inversa" to "plaque psoriasis"
+    adata.obs['sdiag'] = adata.obs['sdiag'].replace({
+        "plaque psoriasis and psoriasis arthritis": "plaque psoriasis",
+        "plaques psoriasis and psoriasis inversa": "plaque psoriasis",
+    })
+    adata.obs['sdiag'] = adata.obs['sdiag'].cat.remove_unused_categories()
+
     # rename non lesional to non-lesional
     adata.obs['diag'] = adata.obs['diag'].astype(str)
     adata.obs = adata.obs.replace({'diag': r'non lesional'}, {'diag': 'non-lesional'}, regex=True)
@@ -155,7 +167,7 @@ def main():
         obs=adata.obs, ref_obsname='Pattern', obsname='healthysamp_Pattern_v2', group_name='Pattern')
 
     # read out unique patients (patient ID),
-    df = adata.obs.drop_duplicates(subset=['Patient ID'], keep='last')
+    df = adata.obs  # .drop_duplicates(subset=['Patient ID'], keep='last')
 
     df_metadata = get_metadata(df=df)
     print(df_metadata.columns.to_list())
@@ -189,7 +201,7 @@ def main():
     sampleIDs = df_overview.loc[~df_overview['SampleID'].isna(), 'SampleID'].to_list()
     df_reindexed = adata.obs.reindex(sampleIDs)
     df_reindexed[['Patient ID', 'diag', 'sdiag', 'Pattern', 'sampleType', 'batchID', 'age', 'Sex_x']].to_excel(
-        '/Volumes/CH__data/Projects/data/Summary/MetaData_Overview_with_Subtypes.xlsx')
+        '/Volumes/CH__data/Projects/data/Summary/MetaData_Overview_with_Subtypes_v1.xlsx')
 
 
 if __name__ == '__main__':
